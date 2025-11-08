@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Editar Movimiento</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px; background-color: #f5f7fa; color: #2d3748; }
+        h1 { color: #1a202c; margin-bottom: 30px; font-weight: 700; }
+        .form-container { background: #fff; padding: 30px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); border: 1px solid #e2e8f0; }
+        .form-group { margin-bottom: 20px; }
+        label { display: block; margin-bottom: 8px; font-weight: 600; color: #4a5568; }
+        input, select { width: 100%; padding: 12px; border: 1px solid #cbd5e0; border-radius: 8px; font-size: 1rem; box-sizing: border-box; transition: border-color 0.2s; }
+        input:focus, select:focus { outline: none; border-color: #4299e1; }
+        .btn-group { display: flex; gap: 15px; margin-top: 30px; }
+        .btn-guardar { flex: 2; background-color: #4299e1; color: white; border: none; padding: 12px; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 1rem; }
+        .btn-guardar:hover { background-color: #3182ce; }
+        .btn-cancelar { flex: 1; background-color: #e2e8f0; color: #4a5568; text-decoration: none; padding: 12px; border-radius: 8px; font-weight: 600; text-align: center; display: flex; align-items: center; justify-content: center; }
+        .btn-cancelar:hover { background-color: #cbd5e0; }
+    </style>
+</head>
+<body>
+    <h1>✏️ Editar Movimiento</h1>
+    
+    <div class="form-container">
+        <form method="POST">
+            <div class="form-group">
+                <label>Fecha</label>
+                <input type="date" name="fecha" value="{{ movimiento.fecha }}" required>
+            </div>
+
+            <div class="form-group">
+                <label>Tipo de Movimiento</label>
+                <select name="tipo" required>
+                    <option value="gasto" {% if movimiento.tipo == 'gasto' %}selected{% endif %}>Gasto</option>
+                    <option value="ingreso" {% if movimiento.tipo == 'ingreso' %}selected{% endif %}>Ingreso</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Categoría</label>
+                <select name="categoria" required>
+                    {% for cat in ['Vivienda', 'Alimentación', 'Transporte', 'Servicios', 'Ocio', 'Salud', 'Nómina', 'Otros'] %}
+                        <option value="{{ cat }}" {% if movimiento.categoria == cat %}selected{% endif %}>{{ cat }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Descripción</label>
+                <input type="text" name="descripcion" value="{{ movimiento.descripcion }}" required>
+            </div>
+
+            <div class="form-group">
+                <label>Monto ($)</label>
+                <input type="number" name="monto" step="0.01" value="{{ movimiento.monto }}" required>
+            </div>
+
+            <div class="btn-group">
+                <a href="/" class="btn-cancelar">Cancelar</a>
+                <button type="submit" class="btn-guardar">Guardar Cambios</button>
+            </div>
+        </form>
+    </div>
+</body>
+</html>
