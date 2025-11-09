@@ -1,1 +1,1 @@
-web: gunicorn --timeout 120 finanzas:app
+web: gunicorn -k gevent --timeout 120 finanzas:app
