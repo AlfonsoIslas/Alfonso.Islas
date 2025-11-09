@@ -8,17 +8,20 @@ from flask_login import LoginManager, UserMixin, login_user, login_required, log
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_mail import Mail, Message
 from itsdangerous import URLSafeTimedSerializer, SignatureExpired
+import os
 
 app = Flask(__name__)
 app.secret_key = 'mi_clave_secreta_super_segura'
 
 # --- CONFIGURACIÓN DEL CORREO ---
 # Reemplaza con tus datos REALES si aún no lo has hecho
+a# --- CONFIGURACIÓN DEL CORREO (USANDO VARIABLES DE ENTORNO) ---
 app.config['MAIL_SERVER'] = 'smtp.gmail.com'
 app.config['MAIL_PORT'] = 587
 app.config['MAIL_USE_TLS'] = True
-app.config['MAIL_USERNAME'] = 'foffy202020@gmail.com'
-app.config['MAIL_PASSWORD'] = 'dhpcmbmqvklupkfv'
+# os.environ.get lee los secretos que guardaste en Render
+app.config['MAIL_USERNAME'] = os.environ.get('MAIL_USERNAME')
+app.config['MAIL_PASSWORD'] = os.environ.get('MAIL_PASSWORD')
 
 mail = Mail(app)
 s = URLSafeTimedSerializer(app.secret_key)
