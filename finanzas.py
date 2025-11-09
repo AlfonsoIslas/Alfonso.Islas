@@ -16,10 +16,11 @@ app.secret_key = 'mi_clave_secreta_super_segura'
 # --- CONFIGURACIÓN DEL CORREO ---
 # Reemplaza con tus datos REALES si aún no lo has hecho
 # --- CONFIGURACIÓN DEL CORREO (USANDO VARIABLES DE ENTORNO) ---
+# --- CONFIGURACIÓN DEL CORREO (VERSIÓN SSL RÁPIDA) ---
 app.config['MAIL_SERVER'] = 'smtp.gmail.com'
-app.config['MAIL_PORT'] = 587
-app.config['MAIL_USE_TLS'] = True
-# os.environ.get lee los secretos que guardaste en Render
+app.config['MAIL_PORT'] = 465          # <--- CAMBIO AQUÍ (era 587)
+app.config['MAIL_USE_TLS'] = False     # <--- CAMBIO AQUÍ (era True)
+app.config['MAIL_USE_SSL'] = True      # <--- NUEVA LÍNEA
 app.config['MAIL_USERNAME'] = os.environ.get('MAIL_USERNAME')
 app.config['MAIL_PASSWORD'] = os.environ.get('MAIL_PASSWORD')
 
