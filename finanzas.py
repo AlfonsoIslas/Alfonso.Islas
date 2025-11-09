@@ -17,13 +17,14 @@ app.secret_key = 'mi_clave_secreta_super_segura'
 # Reemplaza con tus datos REALES si aún no lo has hecho
 # --- CONFIGURACIÓN DEL CORREO (USANDO VARIABLES DE ENTORNO) ---
 # --- CONFIGURACIÓN DEL CORREO (VERSIÓN SSL RÁPIDA) ---
+# --- CONFIGURACIÓN DEL CORREO (INTENTO PUERTO 587 TLS) ---
 app.config['MAIL_SERVER'] = 'smtp.gmail.com'
-app.config['MAIL_PORT'] = 465          # <--- CAMBIO AQUÍ (era 587)
-app.config['MAIL_USE_TLS'] = False     # <--- CAMBIO AQUÍ (era True)
-app.config['MAIL_USE_SSL'] = True      # <--- NUEVA LÍNEA
+app.config['MAIL_PORT'] = 587           # Volvemos al 587
+app.config['MAIL_USE_TLS'] = True       # Activamos TLS
+app.config['MAIL_USE_SSL'] = False      # Desactivamos SSL
 app.config['MAIL_USERNAME'] = os.environ.get('MAIL_USERNAME')
 app.config['MAIL_PASSWORD'] = os.environ.get('MAIL_PASSWORD')
-
+# ...
 mail = Mail(app)
 s = URLSafeTimedSerializer(app.secret_key)
 
