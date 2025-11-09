@@ -1,14 +1,42 @@
-import sqlite3
+import os
 import csv
 import io
 import re
-import os
 from datetime import date
 from flask import Flask, render_template, request, redirect, url_for, flash, Response, jsonify
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_mail import Mail, Message
 from itsdangerous import URLSafeTimedSerializer, SignatureExpired
+
+# --- BLOQUE DE DIAGNÓSTICO INICIO ---
+print("**************************************************")
+print("INICIANDO DIAGNÓSTICO DE BASE DE DATOS...")
+try:
+    import psycopg2
+    from psycopg2.extras import RealDictCursor
+    print("✅ 1. Librería 'psycopg2' encontrada.")
+    HAS_PSYCOPG2 = True
+except ImportError:
+    print("❌ 1. ERROR CRÍTICO: Librería 'psycopg2' NO encontrada. Revisa requirements.txt")
+    HAS_PSYCOPG2 = False
+
+db_url = os.environ.get('DATABASE_URL')
+if db_url:
+    print(f"✅ 2. Variable DATABASE_URL encontrada (empieza por {db_url[:10]}...)")
+else:
+    print("❌ 2. ERROR CRÍTICO: Variable DATABASE_URL NO encontrada en el entorno.")
+
+if HAS_PSYCOPG2 and db_url:
+    print("🚀 CONCLUSIÓN: Intentaremos usar PostgreSQL.")
+    DB_TYPE = 'postgres'
+else:
+    print("⚠️ CONCLUSIÓN: Faltan ingredientes. Usaremos SQLite temporal (se borrará al reiniciar).")
+    DB_TYPE = 'sqlite'
+print("**************************************************")
+# --- BLOQUE DE DIAGNÓSTICO FIN ---
+
+import sqlite3 # Importamos siempre por si hace falta el fallback
 
 app = Flask(__name__)
 app.secret_key = 'mi_clave_secreta_super_segura'
