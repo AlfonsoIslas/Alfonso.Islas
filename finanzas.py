@@ -2,34 +2,27 @@ import sqlite3
 import csv
 import io
 import re
+import os
 from datetime import date
 from flask import Flask, render_template, request, redirect, url_for, flash, Response, jsonify
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_mail import Mail, Message
 from itsdangerous import URLSafeTimedSerializer, SignatureExpired
-import os
 
 app = Flask(__name__)
 app.secret_key = 'mi_clave_secreta_super_segura'
 
-# --- CONFIGURACIÓN DEL CORREO ---
-# Reemplaza con tus datos REALES si aún no lo has hecho
-# --- CONFIGURACIÓN DEL CORREO (USANDO VARIABLES DE ENTORNO) ---
-# --- CONFIGURACIÓN DEL CORREO (VERSIÓN SSL RÁPIDA) ---
-# --- CONFIGURACIÓN DEL CORREO (INTENTO PUERTO 587 TLS) ---
 # --- CONFIGURACIÓN DEL CORREO (MODO PRO: BREVO) ---
 app.config['MAIL_SERVER'] = 'smtp-relay.brevo.com'
-app.config['MAIL_PORT'] = 2525             # Usamos 2525 para saltar el bloqueo
+app.config['MAIL_PORT'] = 2525
 app.config['MAIL_USE_TLS'] = True
 app.config['MAIL_USE_SSL'] = False
-# ... (configuración anterior de servidor, puerto, etc.) ...
 app.config['MAIL_USERNAME'] = os.environ.get('MAIL_USERNAME')
 app.config['MAIL_PASSWORD'] = os.environ.get('MAIL_PASSWORD')
-
-# --- CORRECCIÓN CLAVE AQUÍ ---
-# En lugar de usar MAIL_USERNAME, ponemos tu correo real verificado
+# REMITENTE GLOBAL: Todos los correos saldrán de aquí automáticamente
 app.config['MAIL_DEFAULT_SENDER'] = ('FinWise App', 'foffy202020@gmail.com')
+
 mail = Mail(app)
 s = URLSafeTimedSerializer(app.secret_key)
 
@@ -61,53 +54,24 @@ def conectar_db():
 
 def init_db():
     conn = conectar_db()
-    # Tabla de usuarios AHORA CON EMAIL
-    conn.execute('''
-        CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            username TEXT UNIQUE NOT NULL,
-            email TEXT UNIQUE NOT NULL,
-            password_hash TEXT NOT NULL
-        )
-    ''')
-    conn.execute('''
-        CREATE TABLE IF NOT EXISTS movimientos (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER NOT NULL,
-            fecha TEXT NOT NULL,
-            tipo TEXT NOT NULL,
-            categoria TEXT NOT NULL,
-            monto REAL NOT NULL,
-            descripcion TEXT NOT NULL,
-            FOREIGN KEY(user_id) REFERENCES users(id)
-        )
-    ''')
-    conn.execute('''
-        CREATE TABLE IF NOT EXISTS presupuestos (
-            user_id INTEGER NOT NULL,
-            categoria TEXT NOT NULL,
-            monto_limite REAL NOT NULL,
-            PRIMARY KEY (user_id, categoria),
-            FOREIGN KEY(user_id) REFERENCES users(id)
-        )
-    ''')
+    conn.execute('CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT UNIQUE NOT NULL, email TEXT UNIQUE NOT NULL, password_hash TEXT NOT NULL)')
+    conn.execute('CREATE TABLE IF NOT EXISTS movimientos (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL, fecha TEXT NOT NULL, tipo TEXT NOT NULL, categoria TEXT NOT NULL, monto REAL NOT NULL, descripcion TEXT NOT NULL, FOREIGN KEY(user_id) REFERENCES users(id))')
+    conn.execute('CREATE TABLE IF NOT EXISTS presupuestos (user_id INTEGER NOT NULL, categoria TEXT NOT NULL, monto_limite REAL NOT NULL, PRIMARY KEY (user_id, categoria), FOREIGN KEY(user_id) REFERENCES users(id))')
     conn.commit()
     conn.close()
 
 init_db()
 
-# --- RUTAS DE AUTENTICACIÓN Y RECUPERACIÓN ---
+# --- RUTAS DE AUTENTICACIÓN ---
 @app.route('/register', methods=['GET', 'POST'])
 def register():
     if request.method == 'POST':
         username = request.form['username']
         email = request.form['email']
         password = request.form['password']
-
         if len(password) < 8 or not re.search(r"[A-Z]", password) or not re.search(r"\d", password):
-             flash('La contraseña no es segura (mín. 8 caracteres, 1 mayúscula, 1 número).', 'error')
+             flash('La contraseña no cumple los requisitos de seguridad.', 'error')
              return redirect(url_for('register'))
-
         conn = conectar_db()
         try:
             hashed_pw = generate_password_hash(password)
@@ -144,7 +108,7 @@ def logout():
     flash('Sesión cerrada.', 'exito')
     return redirect(url_for('login'))
 
-# --- NUEVAS RUTAS PARA RECUPERAR CONTRASEÑA ---
+# --- RUTAS DE RECUPERACIÓN ---
 @app.route('/reset_password', methods=['GET', 'POST'])
 def reset_request():
     if request.method == 'POST':
@@ -155,14 +119,16 @@ def reset_request():
         if user:
             token = s.dumps(email, salt='email-recover')
             link = url_for('reset_token', token=token, _external=True)
-            msg = Message('Recuperar Contraseña - FinWise', sender=app.config['MAIL_USERNAME'], recipients=[email])
+            # ¡MIRA QUÉ LIMPIO! Ya no hace falta especificar 'sender' aquí
+            msg = Message('Recuperar Contraseña - FinWise', recipients=[email])
             msg.body = f'Para cambiar tu contraseña, haz clic aquí: {link}\nEl enlace expira en 1 hora.'
             try:
                 mail.send(msg)
-                flash('Correo de recuperación enviado. Revisa tu bandeja.', 'exito')
+                flash('Correo enviado. Revisa tu bandeja (y spam).', 'exito')
                 return redirect(url_for('login'))
             except Exception as e:
-                flash(f'Error al enviar correo: {e}', 'error')
+                print(f"ERROR CORREO: {e}") # Para ver en logs de Render si falla
+                flash(f'Error al enviar correo.', 'error')
         else:
             flash('Este correo no está registrado.', 'error')
     return render_template('reset_request.html')
@@ -171,28 +137,21 @@ def reset_request():
 def reset_token(token):
     try:
         email = s.loads(token, salt='email-recover', max_age=3600)
-    except (SignatureExpired, Exception):
-        flash('El enlace es inválido o ha expirado.', 'error')
+    except:
+        flash('Enlace inválido o expirado.', 'error')
         return redirect(url_for('reset_request'))
-
     if request.method == 'POST':
         password = request.form['password']
-        if len(password) < 8: # (Puedes añadir más validaciones aquí si quieres)
-             flash('Contraseña muy corta.', 'error')
-             return redirect(request.url)
-             
         conn = conectar_db()
         hashed_pw = generate_password_hash(password)
         conn.execute('UPDATE users SET password_hash = ? WHERE email = ?', (hashed_pw, email))
         conn.commit()
         conn.close()
-        flash('¡Contraseña actualizada! Inicia sesión.', 'exito')
+        flash('¡Contraseña actualizada!', 'exito')
         return redirect(url_for('login'))
     return render_template('reset_token.html', token=token)
 
-# --- RUTAS PRINCIPALES (INICIO, GUARDAR, EDITAR, ELIMINAR, EXPORTAR) ---
-# (Estas no cambian, pero las incluyo para que el archivo esté completo y funcional)
-
+# --- RUTAS PRINCIPALES ---
 @app.route('/', methods=['GET', 'POST'])
 @login_required
 def inicio():
@@ -204,42 +163,29 @@ def inicio():
         conn.close()
         flash('Movimiento registrado.', 'exito')
         return redirect(url_for('inicio'))
-
     mes_seleccionado = request.args.get('mes')
-    if mes_seleccionado:
-        movimientos = conn.execute('SELECT * FROM movimientos WHERE user_id = ? AND strftime("%Y-%m", fecha) = ? ORDER BY fecha DESC, id DESC', (current_user.id, mes_seleccionado)).fetchall()
-        titulo_periodo = f"({mes_seleccionado})"
-    else:
-        movimientos = conn.execute('SELECT * FROM movimientos WHERE user_id = ? ORDER BY fecha DESC, id DESC', (current_user.id,)).fetchall()
-        titulo_periodo = "(Histórico Total)"
-
+    query = 'SELECT * FROM movimientos WHERE user_id = ? AND strftime("%Y-%m", fecha) = ? ORDER BY fecha DESC, id DESC' if mes_seleccionado else 'SELECT * FROM movimientos WHERE user_id = ? ORDER BY fecha DESC, id DESC'
+    params = (current_user.id, mes_seleccionado) if mes_seleccionado else (current_user.id,)
+    movimientos = conn.execute(query, params).fetchall()
+    titulo_periodo = f"({mes_seleccionado})" if mes_seleccionado else "(Histórico Total)"
     total_ingresos = sum(m['monto'] for m in movimientos if m['tipo'] == 'ingreso')
     total_gastos = sum(m['monto'] for m in movimientos if m['tipo'] == 'gasto')
-    balance_actual = total_ingresos - total_gastos
-
-    gastos_por_cat_grafico = {}
-    trend_data = {}
-    for mov in movimientos:
-        if mov['tipo'] == 'gasto': gastos_por_cat_grafico[mov['categoria']] = gastos_por_cat_grafico.get(mov['categoria'], 0) + mov['monto']
-        fecha = mov['fecha']
-        if fecha not in trend_data: trend_data[fecha] = {'ingreso': 0, 'gasto': 0}
-        trend_data[fecha][mov['tipo']] += mov['monto']
-    sorted_dates = sorted(trend_data.keys())
-    trend_labels = sorted_dates
-    trend_ingresos = [trend_data[d]['ingreso'] for d in sorted_dates]
-    trend_gastos = [trend_data[d]['gasto'] for d in sorted_dates]
-
-    presupuestos_db = conn.execute('SELECT * FROM presupuestos WHERE user_id = ?', (current_user.id,)).fetchall()
-    limites = {row['categoria']: row['monto_limite'] for row in presupuestos_db}
-    mes_actual_hoy = date.today().strftime('%Y-%m')
-    gastos_actuales = {row['categoria']: row['total'] for row in conn.execute('SELECT categoria, SUM(monto) as total FROM movimientos WHERE user_id = ? AND tipo="gasto" AND strftime("%Y-%m", fecha) = ? GROUP BY categoria', (current_user.id, mes_actual_hoy)).fetchall()}
-    estado_presupuestos = []
-    for cat in ['Vivienda', 'Alimentación', 'Transporte', 'Servicios', 'Ocio', 'Salud', 'Otros']:
-        if cat in limites:
-            limite, gastado = limites[cat], gastos_actuales.get(cat, 0)
-            estado_presupuestos.append({'categoria': cat, 'gastado': gastado, 'limite': limite, 'porcentaje': min((gastado/limite*100) if limite > 0 else 0, 100), 'excedido': gastado > limite})
+    
+    gastos_cat = {}
+    trend = {}
+    for m in movimientos:
+        if m['tipo'] == 'gasto': gastos_cat[m['categoria']] = gastos_cat.get(m['categoria'], 0) + m['monto']
+        d = m['fecha']
+        if d not in trend: trend[d] = {'ingreso': 0, 'gasto': 0}
+        trend[d][m['tipo']] += m['monto']
+    
+    sorted_dates = sorted(trend.keys())
+    
+    presupuestos = {row['categoria']: row['monto_limite'] for row in conn.execute('SELECT * FROM presupuestos WHERE user_id = ?', (current_user.id,)).fetchall()}
+    gastos_mes = {row['categoria']: row['total'] for row in conn.execute('SELECT categoria, SUM(monto) as total FROM movimientos WHERE user_id = ? AND tipo="gasto" AND strftime("%Y-%m", fecha) = ? GROUP BY categoria', (current_user.id, date.today().strftime('%Y-%m'))).fetchall()}
+    estado_presupuestos = [{'categoria': c, 'gastado': gastos_mes.get(c,0), 'limite': presupuestos[c], 'porcentaje': min((gastos_mes.get(c,0)/presupuestos[c]*100), 100) if presupuestos[c]>0 else 0, 'excedido': gastos_mes.get(c,0)>presupuestos[c]} for c in ['Vivienda', 'Alimentación', 'Transporte', 'Servicios', 'Ocio', 'Salud', 'Otros'] if c in presupuestos]
     conn.close()
-    return render_template('index.html', username=current_user.username, balance=balance_actual, ingresos=total_ingresos, gastos=total_gastos, lista_movimientos=movimientos, fecha_hoy=date.today().isoformat(), mes_seleccionado=mes_seleccionado, titulo_periodo=titulo_periodo, categorias_labels=list(gastos_por_cat_grafico.keys()), categorias_data=list(gastos_por_cat_grafico.values()), estado_presupuestos=estado_presupuestos, trend_labels=trend_labels, trend_ingresos=trend_ingresos, trend_gastos=trend_gastos)
+    return render_template('index.html', username=current_user.username, balance=total_ingresos-total_gastos, ingresos=total_ingresos, gastos=total_gastos, lista_movimientos=movimientos, fecha_hoy=date.today().isoformat(), mes_seleccionado=mes_seleccionado, titulo_periodo=titulo_periodo, categorias_labels=list(gastos_cat.keys()), categorias_data=list(gastos_cat.values()), estado_presupuestos=estado_presupuestos, trend_labels=sorted_dates, trend_ingresos=[trend[d]['ingreso'] for d in sorted_dates], trend_gastos=[trend[d]['gasto'] for d in sorted_dates])
 
 @app.route('/guardar_presupuesto', methods=['POST'])
 @login_required
@@ -255,18 +201,18 @@ def guardar_presupuesto():
 @login_required
 def editar(id_movimiento):
     conn = conectar_db()
-    movimiento = conn.execute('SELECT * FROM movimientos WHERE id = ? AND user_id = ?', (id_movimiento, current_user.id)).fetchone()
-    if not movimiento:
+    mov = conn.execute('SELECT * FROM movimientos WHERE id = ? AND user_id = ?', (id_movimiento, current_user.id)).fetchone()
+    if not mov:
         conn.close()
         return redirect(url_for('inicio'))
     if request.method == 'POST':
-        conn.execute('UPDATE movimientos SET fecha=?, tipo=?, categoria=?, monto=?, descripcion=? WHERE id=? AND user_id=?', (request.form['fecha'], request.form['tipo'], request.form['categoria'], float(request.form['monto']), request.form['descripcion'], id_movimiento, current_user.id))
+        conn.execute('UPDATE movimientos SET fecha=?, tipo=?, categoria=?, monto=?, descripcion=? WHERE id=?', (request.form['fecha'], request.form['tipo'], request.form['categoria'], float(request.form['monto']), request.form['descripcion'], id_movimiento))
         conn.commit()
         conn.close()
         flash('Movimiento actualizado.', 'exito')
         return redirect(url_for('inicio'))
     conn.close()
-    return render_template('editar.html', movimiento=movimiento)
+    return render_template('editar.html', movimiento=mov)
 
 @app.route('/eliminar/<int:id_movimiento>', methods=['POST'])
 @login_required
@@ -276,21 +222,21 @@ def eliminar(id_movimiento):
     conn.commit()
     success = cursor.rowcount > 0
     conn.close()
-    if request.is_json or 'application/json' in request.headers.get('Accept', ''): return jsonify({'success': success, 'message': 'Eliminado' if success else 'No encontrado'})
-    flash('Movimiento eliminado.' if success else 'Error al eliminar.', 'exito' if success else 'error')
+    if request.is_json or 'application/json' in request.headers.get('Accept', ''): return jsonify({'success': success, 'message': 'Eliminado' if success else 'Error'})
+    flash('Eliminado.' if success else 'Error.', 'exito' if success else 'error')
     return redirect(url_for('inicio'))
 
 @app.route('/exportar')
 @login_required
 def exportar():
     conn = conectar_db()
-    movimientos = conn.execute('SELECT * FROM movimientos WHERE user_id = ? ORDER BY fecha DESC, id DESC', (current_user.id,)).fetchall()
+    movs = conn.execute('SELECT * FROM movimientos WHERE user_id = ? ORDER BY fecha DESC, id DESC', (current_user.id,)).fetchall()
     conn.close()
     output = io.StringIO()
     output.write('\ufeff')
     writer = csv.writer(output)
     writer.writerow(['Fecha', 'Tipo', 'Categoría', 'Monto', 'Descripción'])
-    for mov in movimientos: writer.writerow([mov['fecha'], mov['tipo'], mov['categoria'], mov['monto'], mov['descripcion']])
+    for m in movs: writer.writerow([m['fecha'], m['tipo'], m['categoria'], m['monto'], m['descripcion']])
     output.seek(0)
     return Response(output.getvalue(), mimetype="text/csv", headers={"Content-Disposition": "attachment;filename=mis_finanzas.csv"})
 
