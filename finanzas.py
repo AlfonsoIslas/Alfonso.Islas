@@ -15,7 +15,7 @@ app.secret_key = 'mi_clave_secreta_super_segura'
 
 # --- CONFIGURACIÓN DEL CORREO ---
 # Reemplaza con tus datos REALES si aún no lo has hecho
-a# --- CONFIGURACIÓN DEL CORREO (USANDO VARIABLES DE ENTORNO) ---
+# --- CONFIGURACIÓN DEL CORREO (USANDO VARIABLES DE ENTORNO) ---
 app.config['MAIL_SERVER'] = 'smtp.gmail.com'
 app.config['MAIL_PORT'] = 587
 app.config['MAIL_USE_TLS'] = True
