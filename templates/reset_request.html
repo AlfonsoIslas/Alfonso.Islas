@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Recuperar Contraseña</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; } body { font-family: 'Inter', sans-serif; background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; color: #2d3748; } .auth-card { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); padding: 40px 30px; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); width: 100%; max-width: 400px; border: 1px solid rgba(255,255,255,0.5); } h1 { font-size: 1.5rem; text-align: center; color: #1a202c; margin-bottom: 10px; font-weight: 700; } p { text-align: center; color: #718096; margin-bottom: 30px; font-size: 0.95rem; } input { width: 100%; padding: 12px 16px; border: 2px solid #e2e8f0; border-radius: 10px; font-size: 1rem; margin-bottom: 20px; background: #f8fafc; } input:focus { outline: none; border-color: #3b82f6; } button { width: 100%; padding: 14px; background-color: #3b82f6; color: white; border: none; border-radius: 10px; font-size: 1rem; font-weight: 600; cursor: pointer; transition: all 0.2s; } button:hover { background-color: #2563eb; } .link { text-align: center; margin-top: 25px; } .link a { color: #3b82f6; text-decoration: none; font-weight: 600; } .alert { padding: 12px; border-radius: 8px; margin-bottom: 20px; text-align: center; background: #fff5f5; color: #c53030; border: 1px solid #fed7d7; }
+    </style>
+</head>
+<body>
+    <div class="auth-card">
+        <h1>🔑 Recuperar Cuenta</h1>
+        <p>Ingresa tu correo y te enviaremos un enlace mágico.</p>
+        {% for cat, msg in get_flashed_messages(with_categories=true) %} <div class="alert">{{ msg }}</div> {% endfor %}
+        <form method="POST">
+            <input type="email" name="email" required placeholder="tu@correo.com" autofocus>
+            <button type="submit">Enviar Enlace</button>
+        </form>
+        <div class="link"><a href="/login">Volver al inicio</a></div>
+    </div>
+</body>
+</html>
