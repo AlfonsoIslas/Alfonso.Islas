@@ -18,12 +18,14 @@ app.secret_key = 'mi_clave_secreta_super_segura'
 # --- CONFIGURACIÓN DEL CORREO (USANDO VARIABLES DE ENTORNO) ---
 # --- CONFIGURACIÓN DEL CORREO (VERSIÓN SSL RÁPIDA) ---
 # --- CONFIGURACIÓN DEL CORREO (INTENTO PUERTO 587 TLS) ---
-app.config['MAIL_SERVER'] = 'smtp.gmail.com'
-app.config['MAIL_PORT'] = 587           # Volvemos al 587
-app.config['MAIL_USE_TLS'] = True       # Activamos TLS
-app.config['MAIL_USE_SSL'] = False      # Desactivamos SSL
+# --- CONFIGURACIÓN DEL CORREO (MODO PRO: BREVO) ---
+app.config['MAIL_SERVER'] = 'smtp-relay.brevo.com'
+app.config['MAIL_PORT'] = 2525             # Usamos 2525 para saltar el bloqueo
+app.config['MAIL_USE_TLS'] = True
+app.config['MAIL_USE_SSL'] = False
 app.config['MAIL_USERNAME'] = os.environ.get('MAIL_USERNAME')
 app.config['MAIL_PASSWORD'] = os.environ.get('MAIL_PASSWORD')
+app.config['MAIL_DEFAULT_SENDER'] = ('FinWise App', os.environ.get('MAIL_USERNAME')) # Nombre bonito para el remitente
 # ...
 mail = Mail(app)
 s = URLSafeTimedSerializer(app.secret_key)
