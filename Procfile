@@ -1,1 +1,1 @@
-web: gunicorn finanzas:app
+web: gunicorn --timeout 120 finanzas:app
