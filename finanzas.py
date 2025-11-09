@@ -23,10 +23,13 @@ app.config['MAIL_SERVER'] = 'smtp-relay.brevo.com'
 app.config['MAIL_PORT'] = 2525             # Usamos 2525 para saltar el bloqueo
 app.config['MAIL_USE_TLS'] = True
 app.config['MAIL_USE_SSL'] = False
+# ... (configuración anterior de servidor, puerto, etc.) ...
 app.config['MAIL_USERNAME'] = os.environ.get('MAIL_USERNAME')
 app.config['MAIL_PASSWORD'] = os.environ.get('MAIL_PASSWORD')
-app.config['MAIL_DEFAULT_SENDER'] = ('FinWise App', os.environ.get('MAIL_USERNAME')) # Nombre bonito para el remitente
-# ...
+
+# --- CORRECCIÓN CLAVE AQUÍ ---
+# En lugar de usar MAIL_USERNAME, ponemos tu correo real verificado
+app.config['MAIL_DEFAULT_SENDER'] = ('FinWise App', 'foffy202020@gmail.com')
 mail = Mail(app)
 s = URLSafeTimedSerializer(app.secret_key)
 
