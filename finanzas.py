@@ -181,7 +181,8 @@ def reset_request():
         if user:
             token = s.dumps(email, salt='email-recover')
             link = url_for('reset_token', token=token, _external=True)
-            msg = Message('Recuperar Contraseña - FinWise', recipients=[email])
+            msg = Message('Recuperar Contraseña - FinWise',sender='foffy202020@gmail.com',  # <-- ¡Forzamos el remitente aquí!
+            recipients=[email])
             msg.body = f'Para cambiar tu contraseña, haz clic aquí: {link}\nEl enlace expira en 1 hora.'
             try:
                 mail.send(msg)
