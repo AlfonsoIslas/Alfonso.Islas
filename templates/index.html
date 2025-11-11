@@ -2,6 +2,10 @@
 <html lang="es">
 <head>
     <link rel="icon" href="{{ url_for('static', filename='favicon.png') }}" type="image/png">
+    <link rel="icon" href="{{ url_for('static', filename='favicon.png') }}" type="image/png">    
+    <meta name="theme-color" content="#111827">
+    <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
+    <link rel="apple-touch-icon" href="{{ url_for('static', filename='icon-192.png') }}">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Finanzas Personales</title>
@@ -352,6 +356,20 @@
                 });
             });
         });
+    </script>
+    <script>
+        // --- REGISTRO DEL SERVICE WORKER ---
+        if ('serviceWorker' in navigator) {
+          window.addEventListener('load', () => {
+            navigator.serviceWorker.register("{{ url_for('sw') }}")
+              .then(registration => {
+                console.log('ServiceWorker registrado con éxito:', registration.scope);
+              })
+              .catch(error => {
+                console.log('Fallo en el registro de ServiceWorker:', error);
+              });
+          });
+        }
     </script>
 </body>
 </html>

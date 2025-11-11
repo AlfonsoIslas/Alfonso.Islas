@@ -284,5 +284,11 @@ def exportar():
     for m in movs: writer.writerow([m['fecha'], m['tipo'], m['categoria'], m['monto'], m['descripcion']])
     return Response(output.getvalue(), mimetype="text/csv", headers={"Content-Disposition": "attachment;filename=finanzas.csv"})
 
+# --- RUTA PARA SERVIR EL SERVICE WORKER ---
+@app.route('/sw.js')
+def sw():
+    return app.send_static_file('sw.js')
+
+
 if __name__ == '__main__':
     app.run(debug=True)
