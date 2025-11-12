@@ -9,6 +9,7 @@ from flask_login import LoginManager, UserMixin, login_user, login_required, log
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_mail import Mail, Message
 from itsdangerous import URLSafeTimedSerializer, SignatureExpired
+from flask_jwt_extended import create_access_token, get_jwt_identity, jwt_required, JWTManager
 
 # --- BLOQUE DE DIAGNÓSTICO INICIO ---
 print("**************************************************")
@@ -46,7 +47,8 @@ app.config['MAIL_USE_SSL'] = False
 app.config['MAIL_USERNAME'] = os.environ.get('MAIL_USERNAME')
 app.config['MAIL_PASSWORD'] = os.environ.get('MAIL_PASSWORD')
 app.config['MAIL_DEFAULT_SENDER'] = ('FinWise App', os.environ.get('MAIL_USERNAME'))
-
+app.config["JWT_SECRET_KEY"] = "mi-super-secreta-llave-para-jwt" 
+jwt = JWTManager(app)
 mail = Mail(app)
 s = URLSafeTimedSerializer(app.secret_key)
 
@@ -135,6 +137,41 @@ except Exception as e:
     print(f"Nota sobre DB (puede ser normal si ya existe): {e}")
 
 # --- RUTAS DE AUTENTICACIÓN ---
+# --- RUTA DE API PARA LOGIN ---
+@app.route('/api/login', methods=['POST'])
+def api_login():
+    # Las apps envían JSON, no formularios
+    username = request.json.get('username', None)
+    password = request.json.get('password', None)
+    
+    conn = get_db_connection()
+    user_db = query_db('SELECT * FROM users WHERE username = ?', (username,), one=True)
+    conn.close()
+
+    if user_db and check_password_hash(user_db['password_hash'], password):
+        # ¡Credenciales correctas! Creamos un token para este usuario
+        access_token = create_access_token(identity=user_db['id'])
+        return jsonify(success=True, access_token=access_token, username=user_db['username'])
+    else:
+        # Credenciales incorrectas
+        return jsonify({"success": False, "msg": "Usuario o contraseña incorrectos"}), 401
+    
+# --- RUTA DE API PROTEGIDA ---
+@app.route('/api/mis_datos', methods=['GET'])
+@jwt_required() # ¡Magia! Esto protege la ruta
+def api_mis_datos():
+    # Obtenemos la identidad (el user_id) que guardamos en el token
+    current_user_id = get_jwt_identity()
+    
+    conn = get_db_connection()
+    user = query_db('SELECT username, email FROM users WHERE id = ?', (current_user_id,), one=True)
+    conn.close()
+    
+    if user:
+        return jsonify(success=True, user=user)
+    else:
+        return jsonify(success=False, msg="Usuario no encontrado"), 404
+
 @app.route('/register', methods=['GET', 'POST'])
 def register():
     if request.method == 'POST':
